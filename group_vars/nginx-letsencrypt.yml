@@ -1,0 +1,8 @@
+LETSENCRYPT_MAIL: "uremail@domain.name"
+LETSENCRYPT_DOMAIN_NAME_1: "exemple.com"
+# LETSENCRYPT_DOMAIN_NAME_2: "second.exemple.com"
+# LETSENCRYPT_DOMAIN_NAME_3: "third.exemple.com"
+PROXY_PORT_1: "forwardToThisPort"
+# PROXY_PORT_2: "forwardToThisPort"
+# PROXY_PORT_3: "forwardToThisPort"
+nginx_headers: "on"

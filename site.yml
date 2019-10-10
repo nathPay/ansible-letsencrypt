@@ -1,0 +1,6 @@
+- hosts: all
+  become: True
+  vars_files:
+    - group_vars/nginx-letsencrypt.yml
+  roles:
+    - nginx-letsencrypt

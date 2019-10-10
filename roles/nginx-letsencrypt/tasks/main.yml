@@ -1,0 +1,84 @@
+- name: Install nginx
+  apt: name=nginx state=latest
+
+- name: Install letsencrypt
+  apt: name=letsencrypt state=latest update_cache=yes
+
+- name: Create letsencrypt directory
+  file: name=/var/www/letsencrypt state=directory
+
+- name: Remove default nginx config
+  file: name=/etc/nginx/sites-enabled/default state=absent
+
+- name: Install nginx site for letsencrypt requests
+  template:
+    src: nginx-http.j2
+    dest: /etc/nginx/sites-enabled/http
+
+- name: Reload nginx to activate letsencrypt site
+  service: name=nginx state=restarted
+
+- name: Create letsencrypt certificate 1
+  shell: letsencrypt certonly -n --webroot -w /var/www/letsencrypt -m {{ LETSENCRYPT_MAIL }} --agree-tos -d {{ LETSENCRYPT_DOMAIN_NAME_1 }}
+  args:
+    creates: /etc/letsencrypt/live/{{ LETSENCRYPT_DOMAIN_NAME_1 }}
+  when: LETSENCRYPT_DOMAIN_NAME_1 is defined
+
+- name: Create letsencrypt certificate 2
+  shell: letsencrypt certonly -n --webroot -w /var/www/letsencrypt -m {{ LETSENCRYPT_MAIL }} --agree-tos -d {{ LETSENCRYPT_DOMAIN_NAME_2 }}
+  args:
+    creates: /etc/letsencrypt/live/{{ LETSENCRYPT_DOMAIN_NAME_2 }}
+  when: LETSENCRYPT_DOMAIN_NAME_2 is defined
+
+- name: Create letsencrypt certificate 3
+  shell: letsencrypt certonly -n --webroot -w /var/www/letsencrypt -m {{ LETSENCRYPT_MAIL }} --agree-tos -d {{ LETSENCRYPT_DOMAIN_NAME_3 }}
+  args:
+    creates: /etc/letsencrypt/live/{{ LETSENCRYPT_DOMAIN_NAME_3 }}
+  when: LETSENCRYPT_DOMAIN_NAME_3 is defined
+
+- name: Generate dhparams
+  shell: openssl dhparam -out /etc/nginx/dhparams.pem 2048
+  args:
+    creates: /etc/nginx/dhparams.pem
+
+- name: Install nginx site for {{ LETSENCRYPT_DOMAIN_NAME_1 }}
+  template:
+    src: nginx-https-1.j2
+    dest: /etc/nginx/sites-enabled/{{ LETSENCRYPT_DOMAIN_NAME_1 }}
+  when: LETSENCRYPT_DOMAIN_NAME_1 is defined
+
+- name: Install nginx site for {{ LETSENCRYPT_DOMAIN_NAME_2 }}
+  template:
+    src: nginx-https-2.j2
+    dest: /etc/nginx/sites-enabled/{{ LETSENCRYPT_DOMAIN_NAME_2 }}
+  when: LETSENCRYPT_DOMAIN_NAME_2 is defined
+
+- name: Install nginx site for {{ LETSENCRYPT_DOMAIN_NAME_3 }}
+  template:
+    src: nginx-https-3.j2
+    dest: /etc/nginx/sites-enabled/{{ LETSENCRYPT_DOMAIN_NAME_3 }}
+  when: LETSENCRYPT_DOMAIN_NAME_3 is defined
+
+- name: Reload nginx to activate specified site
+  service: name=nginx state=restarted
+
+- name: Add letsencrypt cronjob for cert renewal 1
+  cron:
+    name: letsencrypt_renewal
+    special_time: weekly
+    job: letsencrypt --renew certonly -n --webroot -w /var/www/letsencrypt -m {{ LETSENCRYPT_MAIL }} --agree-tos -d {{ LETSENCRYPT_DOMAIN_NAME_1 }} && service nginx reload
+  when: LETSENCRYPT_DOMAIN_NAME_1 is defined
+
+- name: Add letsencrypt cronjob for cert renewal 2
+  cron:
+    name: letsencrypt_renewal
+    special_time: weekly
+    job: letsencrypt --renew certonly -n --webroot -w /var/www/letsencrypt -m {{ LETSENCRYPT_MAIL }} --agree-tos -d {{ LETSENCRYPT_DOMAIN_NAME_2 }} && service nginx reload
+  when: LETSENCRYPT_DOMAIN_NAME_2 is defined
+
+- name: Add letsencrypt cronjob for cert renewal 3
+  cron:
+    name: letsencrypt_renewal
+    special_time: weekly
+    job: letsencrypt --renew certonly -n --webroot -w /var/www/letsencrypt -m {{ LETSENCRYPT_MAIL }} --agree-tos -d {{ LETSENCRYPT_DOMAIN_NAME_3 }} && service nginx reload
+  when: LETSENCRYPT_DOMAIN_NAME_3 is defined

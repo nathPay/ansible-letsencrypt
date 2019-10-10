@@ -1,0 +1,95 @@
+---
+- name: Install nginx
+  package: name=nginx state=present
+  tags: nginx
+
+- name: Install Pip
+  package:
+    name: "{{ (ansible_python_interpreter | default ('python')).split('/')[-1] }}-pip"
+    state: present
+
+- debug:
+    msg: ansible_python_interpreter {{ ansible_python_interpreter }}
+
+- name: Ensure OpenSSL dependencies are installed (Ubuntu)
+  package:
+     name: "{{ item }}"
+     state: present
+  with_items:
+    - build-essential
+    - libssl-dev
+    - libffi-dev
+    - python-dev
+  when: ansible_os_family == "Debian"
+
+- name: Ensure OpenSSL dependencies are installed (CentOS)
+  package:
+     name: "{{ item }}"
+     state: present
+  with_items:
+    - gcc
+    - libffi-devel
+    - openssl-devel
+    - python-devel
+  when: ansible_os_family == "RedHat"
+
+- name: Install pyOpenSSL
+  pip:
+    executable: "{{ ansible_pip | default('pip3') }}"
+    name: pyOpenSSL
+    state: present
+
+- name: Create directory for nginx SSL certificates
+  file: path=/etc/nginx/ssl state=directory mode=0755
+  tags: nginx
+
+- name: Check certificate file
+  stat:
+    path: /etc/nginx/ssl/server.crt
+  register: cert_file_check
+
+- name: Generate SSL private key
+  openssl_privatekey:
+    path: /etc/nginx/ssl/server.key
+    size: 4096
+  when: not cert_file_check.stat.exists
+
+- name: Get public IP
+  ipify_facts:
+  register: public_ip
+
+- name: Generate SSL certificate request
+  openssl_csr:
+    path: /etc/nginx/ssl/server.csr
+    privatekey_path: /etc/nginx/ssl/server.key
+    common_name: "{{ public_ip.ansible_facts.ipify_public_ip }}"
+  when: not cert_file_check.stat.exists
+
+- name: Generate self-signed SSL certificate
+  openssl_certificate:
+    path: /etc/nginx/ssl/server.crt
+    provider: selfsigned
+    privatekey_path: /etc/nginx/ssl/server.key
+    csr_path: /etc/nginx/ssl/server.csr
+  notify:
+   - reload nginx
+  when: not cert_file_check.stat.exists
+
+- name: Install nginx.conf
+  template: src=dhparam.pem.j2 dest=/etc/nginx/ssl/dhparam.pem owner=root group=root mode=0644
+  notify:
+   - reload nginx
+
+- name: Install nginx conf.d files
+  template: src=default.conf.j2 dest=/etc/nginx/conf.d/default.conf owner=root group=root mode=0644
+  notify:
+   - reload nginx
+  tags: nginx
+
+- name: Ensure nginx is running and enabled to start at boot
+  service: name=nginx state=started enabled=yes
+  tags: nginx
+
+- name: executing vars.yml
+  import_tasks: vars.yml
+  when: configure_extended_tcp_settings == true
