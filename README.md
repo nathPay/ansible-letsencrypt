@@ -22,7 +22,9 @@ Modify the `hosts` file by removing `ubuntu@XXX.XXX.XXX.XXX` and adding the addr
 
 /!\ Don't forget to add your public ssh key to your server `~/.ssh/authorized_keys`
 
-Modify `group_vars/nginx-letsencrypt.yml` with the your email, domain name and port forwarding (using nginx)
+You may need to remove existing nginx configuration file using port `443` from `/etc/nginx/sites-enabled/`
+
+Modify `group_vars/nginx-letsencrypt.yml` with the your email, domain names `LETSENCRYPT_DOMAIN_NAME_X` and ports forwarding `PROXY_PORT_X` (using nginx)
 
 ### Start ansible:
 
